@@ -72,10 +72,25 @@ def create_extreme_point_window(image, ij_instance, title=None, axis='off'):
     """
     # check image type
     if isinstance(image, (np.ndarray, np.generic)):
+        print("numpy")
         display_image = image
-    if isinstance(image, xr.DataArray):
+    elif isinstance(image, xr.DataArray):
+        print("xarray")
         display_image = image.data
-    if sj.jclass('ij.ImagePlus').isInstance(image):
+    elif sj.jclass('net.imagej.DefaultDataset').isInstance(image):
+        print('DefaultDataset')
+        if title == None:
+            title = str(image.getName())
+        image_xr = ij_instance.py.from_java(image)
+        display_image = image_xr.data
+    elif sj.jclass('net.imagej.Dataset').isInstance(image):
+        print("dataset")
+        if title == None:
+            title = str(image.getName())
+        image_xr = ij_instance.py.from_java(image)
+        display_image = image_xr.data
+    elif sj.jclass('ij.ImagePlus').isInstance(image):
+        print("imageplus")
         if title == None:
             title = str(image.getTitle())
         ConvertService = ij_instance.get('org.scijava.convert.ConvertService')
@@ -83,16 +98,6 @@ def create_extreme_point_window(image, ij_instance, title=None, axis='off'):
         ds = ConvertService.convert(image, Dataset)
         ds_xr = ij_instance.py.from_java(ds)
         display_image = ds_xr.data
-    if sj.jclass('net.imagej.DefaultDataset').isInstance(image):
-        if title == None:
-            title = str(image.getName())
-        image_xr = ij_instance.py.from_java(image)
-        display_image = image_xr.data
-    if sj.jclass('net.imagej.Dataset').isInstance(image):
-        if title == None:
-            title = str(image.getName())
-        image_xr = ij_instance.py.from_java(image)
-        display_image = image_xr.data
 
     # display image and collect points
     plt.ion()
