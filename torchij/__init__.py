@@ -4,8 +4,12 @@ PyTorch and ImageJ via PyImageJ.
 """
 
 import numpy as np
+import scyjava as sj
+import xarray as xr
+from numpy.lib.arraysetops import isin
+from matplotlib import pyplot as plt
 
-def result_mask_to_dataset(results, ij_instance, show=False):
+def results_to_dataset(results, ij_instance, show=False):
     """
     Send result mask from DEXTR to PyImageJ.
     :param result mask: result_mask from DEXTR
@@ -25,13 +29,13 @@ def result_mask_to_dataset(results, ij_instance, show=False):
         return results_ds
 
     result_int = results.astype(int)
-    result_ds = ij_instance.py.to_dataset(result_ds)
+    result_ds = ij_instance.py.to_dataset(result_int)
     if show:
         ij_instance.ui().show('result mask', result_ds)
         
     return result_ds
 
-def pred_to_dataset(prediction, ij_instance, show=False):
+def preds_to_dataset(predictions, ij_instance, show=False):
     """
     Send prediction from DEXTR to PyImagej.
     :param prediction: Predicition from DEXTR
@@ -39,8 +43,76 @@ def pred_to_dataset(prediction, ij_instance, show=False):
     :param show: Show prediction in ImageJ
     :return: net.imagej.DefaultDataset
     """
-    prediction_ds = ij_instance.py.to_dataset(prediction)
+    predictions_ds = [] # return a list of Datasets if given list of numpy arrays
+    if type(predictions) == list:
+        for prediction in predictions:
+            prediction_ds = ij_instance.py.to_dataset(prediction)
+            predictions_ds.append(prediction_ds)
+            if show:
+                ij_instance.ui().show('prediction', prediction_ds)
+                ij_instance.py.run_macro("""run("Fire");""")
+
+        return predictions_ds
+
+    prediction_ds = ij_instance.py.to_dataset(predictions)
     if show:
         ij_instance.ui().show('prediction', prediction_ds)
         ij_instance.py.run_macro("""run("Fire");""")
+
     return prediction_ds
+
+def create_extreme_point_window(image, ij_instance, title=None, axis='off'):
+    """
+    Generate window to collect extreme points around the object
+    of interest.
+    :param dataset: ImageJ dataset
+    :param ij_instance: Instance of ImageJ via PyImageJ
+    :param title: Title of image
+    :param axis: Display axis on/off
+    """
+    # check image type
+    if isinstance(image, (np.ndarray, np.generic)):
+        display_image = image
+    if isinstance(image, xr.DataArray):
+        display_image = image.data
+    if sj.jclass('ij.ImagePlus').isInstance(image):
+        if title == None:
+            title = str(image.getTitle())
+        ConvertService = ij_instance.get('org.scijava.convert.ConvertService')
+        Dataset = sj.jimport('net.imagej.Dataset')
+        ds = ConvertService.convert(image, Dataset)
+        ds_xr = ij_instance.py.from_java(ds)
+        display_image = ds_xr.data
+    if sj.jclass('net.imagej.DefaultDataset').isInstance(image):
+        if title == None:
+            title = str(image.getName())
+        image_xr = ij_instance.py.from_java(image)
+        display_image = image_xr.data
+    if sj.jclass('net.imagej.Dataset').isInstance(image):
+        if title == None:
+            title = str(image.getName())
+        image_xr = ij_instance.py.from_java(image)
+        display_image = image_xr.data
+
+    # display image and collect points
+    plt.ion()
+    plt.axis(axis)
+    plt.imshow(display_image)
+    plt.title(title)
+
+    return
+
+def collect_extreme_points_ori(points=4, timeout=0):
+    """
+    Collect the extreme points from an open
+    pyplot window and return origins.
+    :param points: Number of points to collect (int)
+    :param timeout: Set timeout (int)
+    """
+    extreme_points_ori = np.array(plt.ginput(points,timeout=timeout)).astype(np.int)
+
+    return extreme_points_ori
+
+def crop_to_bounding_box():
+
+    return 
