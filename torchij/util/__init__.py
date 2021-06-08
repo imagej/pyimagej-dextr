@@ -1,4 +1,7 @@
 import numpy as np
+import scyjava as sj
+import xarray as xr
+import cv2
 
 def create_bounding_box(image, points=None, pad=0, zero_pad=False):
     if points is not None:
@@ -57,3 +60,47 @@ def crop_image(image, bounding_box, zero_pad=False):
         crop[inds[1]:inds[3] + 1, inds[0]:inds[2] + 1, :] = image[bounding_box_valid[1]:bounding_box_valid[3] + 1, bounding_box_valid[0]:bounding_box_valid[2] + 1, :]
 
     return crop
+
+def resize_image(sample, resolution, flagval=None):
+    # resize the incoming numpy array
+    if flagval is None:
+        if ((sample == 0) | (sample == 1)).all():
+            flagval = cv2.INTER_NEAREST
+        else:
+            flagval = cv2.INTER_CUBIC
+
+    if isinstance(resolution, int):
+        tmp = [resolution, resolution]
+        tmp[np.argmax(sample.shape[:2])] = int(round(float(resolution)/np.min(sample.shape[:2])*np.max(sample.shape[:2])))
+        resolution = tuple(tmp)
+
+    if sample.ndim == 2 or (sample.ndim == 3 and sample.shape[2] == 3):
+        sample = cv2.resize(sample, resolution[::-1], interpolation=flagval)
+    else:
+        tmp = sample
+        sample = np.zeros(np.append(resolution, tmp.shape[2]), dtype=np.float32)
+        for ii in range(sample.shape[2]):
+            sample[:, :, ii] = cv2.resize(tmp[:, :, ii], resolution[::-1], interpolation=flagval)
+    
+    return sample
+
+def image_to_numpy(image, ij_instance):
+    """
+    Take arrays and return numpys
+    """
+    if isinstance(image, (np.ndarray, np.generic)):
+        return image
+    elif isinstance(image, xr.DataArray):
+        return image.data
+    elif sj.jclass('net.imagej.DefaultDataset').isInstance(image):
+        image_xr = ij_instance.py.from_java(image)
+        return image_xr.data
+    elif sj.jclass('net.imagej.Dataset').isInstance(image):
+        image_xr = ij_instance.py.from_java(image)
+        return image_xr.data
+    elif sj.jclass('ij.ImagePlus').isInstance(image):
+        ConvertService = ij_instance.get('org.scijava.convert.ConvertService')
+        Dataset = sj.jimport('net.imagej.Dataset')
+        ds = ConvertService.convert(image, Dataset)
+        ds_xr = ij_instance.py.from_java(ds)
+        return ds_xr.data
