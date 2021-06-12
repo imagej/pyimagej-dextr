@@ -131,3 +131,24 @@ def create_gaussian(size, sigma=10, center=None, d_type=np.float64):
         y0 = center[1]
 
     return np.exp(-4 * np.log(2) * ((x - x0) ** 2 + (y - y0) ** 2) / sigma ** 2).astype(d_type)
+
+def create_ground_truth(image, labels, sigma=10, one_mask_per_point=False):
+    h, w = image.shape[:2]
+    if labels is None:
+        ground_truth = create_gaussian((h, w), center=(h // 2, w // 2), sigma=sigma)
+    else:
+        labels = np.array(labels)
+        if labels.ndim == 1:
+            labels = labels[np.newaxis]
+        if one_mask_per_point:
+            ground_truth = np.zeros(shape=(h, w, labels.shape[0]))
+            for i in range(labels.shape[0]):
+                ground_truth[:, :, i] = create_gaussian((h, w), center=labels[i, :], sigma=sigma)
+        else:
+            ground_truth = np.zeros(shape=(h, w), dtype=np.float64)
+            for i in range(labels.shape[0]):
+                ground_truth = np.maximum(ground_truth, create_gaussian((h, w), center=labels[i, :], sigma=sigma))
+
+    ground_truth = ground_truth.astype(dtype=image.dtype)
+
+    return ground_truth
