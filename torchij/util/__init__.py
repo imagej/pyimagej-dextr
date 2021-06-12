@@ -84,6 +84,20 @@ def resize_image(sample, resolution, flagval=None):
     
     return sample
 
+def mask_crop(image, mask, relax=0, zero_pad=False):
+    if mask.shape[:2] != image.shape[:2]:
+        mask = cv2.resize(mask, dsize=tuple(reversed(image.shape[:2])), interpolation=cv2.INTER_NEAREST)
+
+    assert(mask.shape[:2] == image.shape[:2])
+    bbox = create_bounding_box(mask, pad=relax, zero_pad=zero_pad)
+
+    if bbox is None:
+        return None
+
+    crop = crop_image(image, bbox, zero_pad)
+    
+    return crop
+
 def image_to_numpy(image, ij_instance):
     """
     Take arrays and return numpys
