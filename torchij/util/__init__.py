@@ -118,3 +118,16 @@ def image_to_numpy(image, ij_instance):
         ds = ConvertService.convert(image, Dataset)
         ds_xr = ij_instance.py.from_java(ds)
         return ds_xr.data
+
+def create_gaussian(size, sigma=10, center=None, d_type=np.float64):
+    x = np.arange(0, size[1], 1, float)
+    y = np.arange(0, size[0], 1, float)
+    y = y[:, np.newaxis]
+
+    if center is None:
+        x0 = y0 = size[0] // 2
+    else:
+        x0 = center[0]
+        y0 = center[1]
+
+    return np.exp(-4 * np.log(2) * ((x - x0) ** 2 + (y - y0) ** 2) / sigma ** 2).astype(d_type)
