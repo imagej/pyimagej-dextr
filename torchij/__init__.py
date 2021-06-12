@@ -6,7 +6,6 @@ PyTorch and ImageJ via PyImageJ.
 import numpy as np
 import scyjava as sj
 import xarray as xr
-from numpy.lib.arraysetops import isin
 from matplotlib import pyplot as plt
 
 def results_to_dataset(results, ij_instance, show=False):
