@@ -152,3 +152,8 @@ def create_ground_truth(image, labels, sigma=10, one_mask_per_point=False):
     ground_truth = ground_truth.astype(dtype=image.dtype)
 
     return ground_truth
+
+def normalize_image(image, max_value):
+    
+    normalized_image = max_value * (image -image.min()) / max((image.max() - image.min()), 1e-8)
+    return normalized_image
