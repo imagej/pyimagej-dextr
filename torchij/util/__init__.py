@@ -30,7 +30,7 @@ def create_bounding_box(image, points=None, pad=0, zero_pad=False):
 
     return x_min, y_min, x_max, y_max
 
-def crop_image(image, bounding_box, zero_pad=False):
+def bounding_box_crop(image, bounding_box, zero_pad=False):
     # get image bounds
     bounds = (0, 0, image.shape[1] - 1, image.shape[0] -1)
 
@@ -94,7 +94,7 @@ def mask_crop(image, mask, relax=0, zero_pad=False):
     if bbox is None:
         return None
 
-    crop = crop_image(image, bbox, zero_pad)
+    crop = bounding_box_crop(image, bbox, zero_pad)
     
     return crop
 
