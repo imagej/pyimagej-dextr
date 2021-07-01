@@ -72,12 +72,16 @@ def resize_image(image, resolution, flagval=None):
         else:
             flagval = cv2.INTER_CUBIC
 
+    # convert an int into a tuple --> (x, x)
     if isinstance(resolution, int):
         tmp = [resolution, resolution]
         tmp[np.argmax(image.shape[:2])] = int(round(float(resolution)/np.min(image.shape[:2])*np.max(image.shape[:2])))
         resolution = tuple(tmp)
 
-    if image.ndim == 2 or (image.ndim == 3 and image.shape[2] == 3):
+    if image.ndim == 2:
+        image = cv2.resize(image, resolution[::-1], interpolation=flagval)
+        image = image[:, :, np.newaxis]
+    elif image.ndim == 3 and image.shape[2] ==3:
         image = cv2.resize(image, resolution[::-1], interpolation=flagval)
     else:
         tmp = image
