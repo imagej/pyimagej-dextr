@@ -61,28 +61,31 @@ def bounding_box_crop(image, bounding_box, zero_pad=False):
 
     return crop
 
-def resize_image(sample, resolution, flagval=None):
+def resize_image(image, resolution, flagval=None):
     # resize the incoming numpy array
+    if isinstance(image, xr.DataArray):
+        image = image.data
+
     if flagval is None:
-        if ((sample == 0) | (sample == 1)).all():
+        if ((image == 0) | (image == 1)).all():
             flagval = cv2.INTER_NEAREST
         else:
             flagval = cv2.INTER_CUBIC
 
     if isinstance(resolution, int):
         tmp = [resolution, resolution]
-        tmp[np.argmax(sample.shape[:2])] = int(round(float(resolution)/np.min(sample.shape[:2])*np.max(sample.shape[:2])))
+        tmp[np.argmax(image.shape[:2])] = int(round(float(resolution)/np.min(image.shape[:2])*np.max(image.shape[:2])))
         resolution = tuple(tmp)
 
-    if sample.ndim == 2 or (sample.ndim == 3 and sample.shape[2] == 3):
-        sample = cv2.resize(sample, resolution[::-1], interpolation=flagval)
+    if image.ndim == 2 or (image.ndim == 3 and image.shape[2] == 3):
+        image = cv2.resize(image, resolution[::-1], interpolation=flagval)
     else:
-        tmp = sample
-        sample = np.zeros(np.append(resolution, tmp.shape[2]), dtype=np.float32)
-        for ii in range(sample.shape[2]):
-            sample[:, :, ii] = cv2.resize(tmp[:, :, ii], resolution[::-1], interpolation=flagval)
+        tmp = image
+        image = np.zeros(np.append(resolution, tmp.shape[2]), dtype=np.float32)
+        for ii in range(image.shape[2]):
+            image[:, :, ii] = cv2.resize(tmp[:, :, ii], resolution[::-1], interpolation=flagval)
     
-    return sample
+    return image
 
 def mask_crop(image, mask, relax=0, zero_pad=False):
     if mask.shape[:2] != image.shape[:2]:
