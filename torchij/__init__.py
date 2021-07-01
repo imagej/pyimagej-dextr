@@ -5,6 +5,7 @@ PyTorch and ImageJ via PyImageJ.
 
 import numpy as np
 import scyjava as sj
+import torchij.util
 import xarray as xr
 from matplotlib import pyplot as plt
 
@@ -71,30 +72,25 @@ def create_extreme_point_window(image, ij_instance, title=None, axis='off'):
     """
     # check image type
     if isinstance(image, (np.ndarray, np.generic)):
-        print("numpy")
         display_image = image
     elif isinstance(image, xr.DataArray):
-        print("xarray")
         display_image = image.data
     elif sj.jclass('net.imagej.DefaultDataset').isInstance(image):
-        print('DefaultDataset')
         if title == None:
             title = str(image.getName())
         image_xr = ij_instance.py.from_java(image)
         display_image = image_xr.data
     elif sj.jclass('net.imagej.Dataset').isInstance(image):
-        print("dataset")
         if title == None:
             title = str(image.getName())
         image_xr = ij_instance.py.from_java(image)
         display_image = image_xr.data
     elif sj.jclass('ij.ImagePlus').isInstance(image):
-        print("imageplus")
         if title == None:
             title = str(image.getTitle())
-        ConvertService = ij_instance.get('org.scijava.convert.ConvertService')
+        convertService = ij_instance.get('org.scijava.convert.ConvertService')
         Dataset = sj.jimport('net.imagej.Dataset')
-        ds = ConvertService.convert(image, Dataset)
+        ds = convertService.convert(image, Dataset)
         ds_xr = ij_instance.py.from_java(ds)
         display_image = ds_xr.data
 
