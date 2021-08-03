@@ -112,7 +112,3 @@ def collect_extreme_points_ori(points=4, timeout=0):
     extreme_points_ori = np.array(plt.ginput(points,timeout=timeout)).astype(np.int)
 
     return extreme_points_ori
-
-def crop_to_bounding_box():
-
-    return 
