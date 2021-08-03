@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import scyjava as sj
 import xarray as xr
@@ -30,7 +31,7 @@ def create_bounding_box(image, points=None, pad=0, zero_pad=False):
 
     return x_min, y_min, x_max, y_max
 
-def bounding_box_crop(image, bounding_box, zero_pad=False):
+def crop_bounding_box(image, bounding_box, zero_pad=False):
     # get image bounds
     bounds = (0, 0, image.shape[1] - 1, image.shape[0] -1)
 
@@ -91,7 +92,7 @@ def resize_image(image, resolution, flagval=None):
     
     return image
 
-def mask_crop(image, mask, relax=0, zero_pad=False):
+def crop_from_mask(image, mask, relax=0, zero_pad=False):
     if mask.shape[:2] != image.shape[:2]:
         mask = cv2.resize(mask, dsize=tuple(reversed(image.shape[:2])), interpolation=cv2.INTER_NEAREST)
 
@@ -104,6 +105,56 @@ def mask_crop(image, mask, relax=0, zero_pad=False):
     crop = bounding_box_crop(image, bbox, zero_pad)
     
     return crop
+
+def crop_to_mask(crop_mask, bbox, im=None, im_size=None, zero_pad=False, relax=0, mask_relax=True, interpolation=cv2.INTER_CUBIC, scikit=False):
+    if scikit:
+        from skimage.transform import resize as sk_resize
+    assert(not(im is None and im_size is None)), 'You have to provide an image or the image size'
+    if im is None:
+        im_si = im_size
+    else:
+        im_si = im.shape
+    # Borers of image
+    bounds = (0, 0, im_si[1] - 1, im_si[0] - 1)
+
+    # Valid bounding box locations as (x_min, y_min, x_max, y_max)
+    bbox_valid = (max(bbox[0], bounds[0]),
+                  max(bbox[1], bounds[1]),
+                  min(bbox[2], bounds[2]),
+                  min(bbox[3], bounds[3]))
+
+    # Bounding box of initial mask
+    bbox_init = (bbox[0] + relax,
+                 bbox[1] + relax,
+                 bbox[2] - relax,
+                 bbox[3] - relax)
+
+    if zero_pad:
+        # Offsets for x and y
+        offsets = (-bbox[0], -bbox[1])
+    else:
+        assert((bbox == bbox_valid).all())
+        offsets = (-bbox_valid[0], -bbox_valid[1])
+
+    # Simple per element addition in the tuple
+    inds = tuple(map(sum, zip(bbox_valid, offsets + offsets)))
+
+    if scikit:
+        crop_mask = sk_resize(crop_mask, (bbox[3] - bbox[1] + 1, bbox[2] - bbox[0] + 1), order=0, mode='constant').astype(crop_mask.dtype)
+    else:
+        crop_mask = cv2.resize(crop_mask, (bbox[2] - bbox[0] + 1, bbox[3] - bbox[1] + 1), interpolation=interpolation)
+    result_ = np.zeros(im_si)
+    result_[bbox_valid[1]:bbox_valid[3] + 1, bbox_valid[0]:bbox_valid[2] + 1] = \
+        crop_mask[inds[1]:inds[3] + 1, inds[0]:inds[2] + 1]
+
+    result = np.zeros(im_si)
+    if mask_relax:
+        result[bbox_init[1]:bbox_init[3]+1, bbox_init[0]:bbox_init[2]+1] = \
+            result_[bbox_init[1]:bbox_init[3]+1, bbox_init[0]:bbox_init[2]+1]
+    else:
+        result = result_
+
+    return result
 
 def image_to_numpy(image, ij_instance):
     """
@@ -125,6 +176,32 @@ def image_to_numpy(image, ij_instance):
         ds = ConvertService.convert(image, Dataset)
         ds_xr = ij_instance.py.from_java(ds)
         return ds_xr.data
+
+def overlay_masks(im, masks, alpha=0.5):
+    colors = np.load(os.path.join(os.path.dirname(__file__), 'pascal_map.npy'))/255.
+    
+    if isinstance(masks, np.ndarray):
+        masks = [masks]
+
+    assert len(colors) >= len(masks), 'Not enough colors'
+
+    ov = im.copy()
+    im = im.astype(np.float32)
+    total_ma = np.zeros([im.shape[0], im.shape[1]])
+    i = 1
+    for ma in masks:
+        ma = ma.astype(np.bool)
+        fg = im * alpha+np.ones(im.shape) * (1 - alpha) * colors[i, :3]   # np.array([0,0,255])/255.0
+        i = i + 1
+        ov[ma == 1] = fg[ma == 1]
+        total_ma += ma
+
+        # [-2:] is s trick to be compatible both with opencv 2 and 3
+        contours = cv2.findContours(ma.copy().astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+        cv2.drawContours(ov, contours[0], -1, (0.0, 0.0, 0.0), 1)
+    ov[total_ma == 0] = im[total_ma == 0]
+
+    return ov
 
 def create_gaussian(size, sigma=10, center=None, d_type=np.float64):
     x = np.arange(0, size[1], 1, float)
