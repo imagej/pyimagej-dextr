@@ -165,17 +165,15 @@ def image_to_numpy(image, ij_instance):
     elif isinstance(image, xr.DataArray):
         return image.data
     elif sj.jclass('net.imagej.DefaultDataset').isInstance(image):
-        image_xr = ij_instance.py.from_java(image)
-        return image_xr.data
+        image = ij_instance.py.from_java(image)
+        return image.data
     elif sj.jclass('net.imagej.Dataset').isInstance(image):
-        image_xr = ij_instance.py.from_java(image)
-        return image_xr.data
+        image = ij_instance.py.from_java(image)
+        return image.data
     elif sj.jclass('ij.ImagePlus').isInstance(image):
-        ConvertService = ij_instance.get('org.scijava.convert.ConvertService')
-        Dataset = sj.jimport('net.imagej.Dataset')
-        ds = ConvertService.convert(image, Dataset)
-        ds_xr = ij_instance.py.from_java(ds)
-        return ds_xr.data
+        image = ij_instance.py.to_dataset(image)
+        image = ij_instance.py.from_java(image)
+        return image.data
 
 def overlay_masks(im, masks, alpha=0.5):
     colors = np.load(os.path.join(os.path.dirname(__file__), 'pascal_map.npy'))/255.
