@@ -105,6 +105,8 @@ with torch.no_grad():
         print("Collecting masks ...")
         results.append(result)
 
+        tij.join_mask_to_image(image, results, ij, True)
+        
         # plot the results
         print("Displaying masks ...")
         plt.imshow(tij.util.overlay_masks(image.data / 255, results))
