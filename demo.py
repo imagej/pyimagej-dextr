@@ -7,12 +7,15 @@ import torch
 from mypath import Path
 from collections import OrderedDict
 from matplotlib import pyplot as plt
-from torch.nn.functional import upsample
+from torch.nn.functional import interpolate
 
 # start imagej
 print("Starting ImageJ ...")
 ij = imagej.init(headless=False)
 print(f"ImageJ version: {ij.getVersion()}")
+
+# start UI
+ij.ui().showUI()
 
 def show_ij_img(array):
     ds = ij.py.to_dataset(array)
@@ -94,7 +97,7 @@ with torch.no_grad():
         print("Sending inputs to the network ...")
         inputs = inputs.to(device)
         outputs = net.forward(inputs)
-        outputs = upsample(outputs, size=(512, 512), mode='bilinear', align_corners=True)
+        outputs = interpolate(outputs, size=(512, 512), mode='bilinear',align_corners=True)
         outputs = outputs.to(torch.device('cpu'))
 
         pred = np.transpose(outputs.data.numpy()[0, ...], (1, 2, 0))
