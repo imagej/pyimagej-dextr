@@ -32,7 +32,6 @@ def show_plt_img(array):
 def load_img(path):
     img_ds = ij.io().open(path)
     img_xr = ij.py.from_java(img_ds)
-    print(f"Complete ... \nArray shape: {img_xr.shape}\nArray ndim: {img_xr.ndim}")
 
     return img_xr
     
@@ -73,7 +72,7 @@ results = []
 with torch.no_grad():
     while 1:
         print("Collecting points ...")
-        extreme_points_ori = tij.collect_extreme_points_ori()
+        extreme_points_ori = tij.collect_extreme_points_ori(points=5)
 
         # crop image to bounding box from extreme_points_ori
         print("Creating crop ...")
@@ -108,7 +107,9 @@ with torch.no_grad():
         print("Collecting masks ...")
         results.append(result)
 
+        # join results to input image
         tij.join_mask_to_image(image, results, ij, True)
+        #tij.preds_to_dataset(pred, ij, True) # view predictions
         
         # plot the results
         print("Displaying masks ...")
