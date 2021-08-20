@@ -5,7 +5,7 @@ PyTorch and ImageJ via PyImageJ.
 
 import numpy as np
 import scyjava as sj
-import torchij.util
+import net_segment.util
 import xarray as xr
 from matplotlib import pyplot as plt
 
