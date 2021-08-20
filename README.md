@@ -9,5 +9,5 @@ Requirements
 </center>
 
 | Package name | Version |
-| :===: | :===: |
+| :---: | :---: |
 | pyimagej | >= 1.0.0 |
