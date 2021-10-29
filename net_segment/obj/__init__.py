@@ -17,7 +17,7 @@ def show_image(image: Image.Image):
 
     return None
 
-def bounding_box(image: Image.Image, ymin, xmin, ymax, xmax, color, font, thickness=4, display_str_list=()):
+def draw_bounding_box(image: Image.Image, ymin, xmin, ymax, xmax, color, font, thickness=4, display_str_list=()):
     draw = ImageDraw.Draw(image)
     img_width, img_height = image.size
     (left, right, top, bottom) = (xmin * img_width, xmax * img_width, ymin * img_height, ymax * img_height)
