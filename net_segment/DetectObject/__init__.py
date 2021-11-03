@@ -40,7 +40,7 @@ def draw_bounding_box(image: Image.Image, ymin, xmin, ymax, xmax, color, font, t
 
     return None
 
-def draw_boxes(image, boxes, class_names, scores, max_boxes=10, min_score=0.1):
+def draw_boxes(image: np.ndarray, boxes, class_names, scores, max_boxes=10, min_score=0.1):
     """Overlay labeled boxes on an image with formatted scores and label names."""
     colors = list(ImageColor.colormap.values())
     try:
@@ -68,12 +68,17 @@ def draw_boxes(image, boxes, class_names, scores, max_boxes=10, min_score=0.1):
 
     return None
 
+def get_model_results(model_output):
+    results = {key:value.numpy() for key, value in model_output.items()}
+
+    return results
+
 def open_image(ij_instance, path: str, resize_width=256, resize_height=256, show=False) -> Image.Image:
     """
     Accepts only 8-bit images and resizes them.
     """
-    img = ij_instance.ij.io().open(path)
-    img_array = ij_instance.ij.py.from_java(img)
+    img = ij_instance.io().open(path)
+    img_array = ij_instance.py.from_java(img)
     img_array = img_array.data
     pil_image = Image.fromarray(img_array)
     pil_image = ImageOps.fit(pil_image, (resize_width, resize_height), Image.ANTIALIAS)
@@ -84,6 +89,7 @@ def open_image(ij_instance, path: str, resize_width=256, resize_height=256, show
 
     return pil_image_rgb
 
-def load_image():
-
-    return None
+def load_image(image: Image.Image, dtype=np.uint8):
+    img_array = tf.keras.preprocessing.image.img_to_array(image)
+    img_array = np.expand_dims(img_array, axis=0) # expand dims for tensor
+    return tf.convert_to_tensor(img_array, dtype)
