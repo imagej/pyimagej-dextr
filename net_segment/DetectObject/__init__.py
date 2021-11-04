@@ -9,7 +9,7 @@ from PIL import ImageDraw
 from PIL import ImageFont
 from PIL import ImageOps
 
-def show_image(image: Image.Image):
+def show_image(image):
     fig = plt.figure(figsize=(10,8))
     plt.grid(False)
     plt.imshow(image)
@@ -76,20 +76,22 @@ def get_model_results(model_output):
 def open_image(ij_instance, path: str, resize_width=256, resize_height=256, show=False) -> Image.Image:
     """
     Accepts only 8-bit images and resizes them.
+    :return: Resized image as a numpy array.
     """
+    #TODO: Improve this logic
+    # open image w/ imagej and generic numpy array
     img = ij_instance.io().open(path)
     img_array = ij_instance.py.from_java(img)
     img_array = img_array.data
+    # use PIL to resize and convert to RGB
     pil_image = Image.fromarray(img_array)
     pil_image = ImageOps.fit(pil_image, (resize_width, resize_height), Image.ANTIALIAS)
     pil_image_rgb = pil_image.convert("RGB")
+    # reshape numpy array for tensorflow
+    (img_width, img_height) = pil_image.size
+    tf_image_np = np.array(pil_image_rgb.getdata()).reshape((1, img_height, img_width, 3)).astype(np.uint8)
 
     if show:
         show_image(pil_image)
 
-    return pil_image_rgb
-
-def load_image(image: Image.Image, dtype=np.uint8):
-    img_array = tf.keras.preprocessing.image.img_to_array(image)
-    img_array = np.expand_dims(img_array, axis=0) # expand dims for tensor
-    return tf.convert_to_tensor(img_array, dtype)
+    return tf_image_np
