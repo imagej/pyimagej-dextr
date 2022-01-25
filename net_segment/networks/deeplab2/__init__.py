@@ -5,7 +5,7 @@ import torch
 import numpy as np
 from copy import deepcopy
 from torch.nn import functional as F
-from mypath import Path
+from net_segment.util import Path
 
 affine_par = True
 
