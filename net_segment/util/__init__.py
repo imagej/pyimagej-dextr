@@ -4,6 +4,22 @@ import scyjava as sj
 import xarray as xr
 import cv2
 
+class Path(object):
+    @staticmethod
+    def db_root_dir(database):
+        if database == 'pascal':
+            return '/path/to/PASCAL/VOC2012'
+        elif database == 'sbd':
+            return '/path/to/SBD/'
+        else:
+            print('Database {} not available.'.format(database))
+            raise NotImplementedError
+
+
+    @staticmethod
+    def models_dir():
+        return 'models/'
+
 def create_bounding_box(image, points=None, pad=0, zero_pad=False):
     if points is not None:
         inds = np.flip(points.transpose(), axis=0)
@@ -102,7 +118,7 @@ def crop_from_mask(image, mask, relax=0, zero_pad=False):
     if bbox is None:
         return None
 
-    crop = bounding_box_crop(image, bbox, zero_pad)
+    crop = crop_bounding_box(image, bbox, zero_pad)
     
     return crop
 
