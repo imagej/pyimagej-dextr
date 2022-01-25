@@ -1,17 +1,17 @@
 import os
 import imagej
 import numpy as np
-import torchij as tij
-import torchij.networks.deeplab2 as resnet
+import net_segment as ns
+import net_segment.networks.deeplab2 as resnet
 import torch
-from mypath import Path
+from net_segment.util import Path
 from collections import OrderedDict
 from matplotlib import pyplot as plt
 from torch.nn.functional import interpolate
 
 # start imagej
 print("Starting ImageJ ...")
-ij = imagej.init(headless=False)
+ij = imagej.init(mode='interactive')
 print(f"ImageJ version: {ij.getVersion()}")
 
 # start UI
@@ -65,27 +65,27 @@ net.to(device)
 # open image and collect points
 print("Opening image ...")
 image = load_img('imgs/cell.jpg')
-tij.create_extreme_point_window(image, ij, title="Data")
+ns.create_extreme_point_window(image, ij, title="Data")
 
 results = []
 
 with torch.no_grad():
     while 1:
         print("Collecting points ...")
-        extreme_points_ori = tij.collect_extreme_points_ori(points=5)
+        extreme_points_ori = ns.collect_extreme_points_ori(points=5)
 
         # crop image to bounding box from extreme_points_ori
         print("Creating crop ...")
-        bbox = tij.util.create_bounding_box(image, points=extreme_points_ori, pad=pad, zero_pad=True)
-        crop = tij.util.crop_bounding_box(image, bounding_box=bbox, zero_pad=True)
-        resize = tij.util.resize_image(crop, (512, 512)).astype(np.float32)
+        bbox = ns.util.create_bounding_box(image, points=extreme_points_ori, pad=pad, zero_pad=True)
+        crop = ns.util.crop_bounding_box(image, bounding_box=bbox, zero_pad=True)
+        resize = ns.util.resize_image(crop, (512, 512)).astype(np.float32)
 
         # generate extreme point heat map
         print("Generating heatmap ...")
         extreme_points = extreme_points_ori - [np.min(extreme_points_ori[:, 0]),  np.min(extreme_points_ori[:1])] + [pad, pad]
         extreme_points = (512 * extreme_points * [1 / crop.shape[1], 1 / crop.shape[0]]).astype(int)
-        heatmap = tij.util.create_ground_truth(resize, extreme_points, sigma=10)
-        heatmap = tij.util.normalize_image(heatmap, 255)
+        heatmap = ns.util.create_ground_truth(resize, extreme_points, sigma=10)
+        heatmap = ns.util.normalize_image(heatmap, 255)
 
         # convert inputs to tensor
         print("Converting inputs ...")
@@ -102,16 +102,17 @@ with torch.no_grad():
         pred = np.transpose(outputs.data.numpy()[0, ...], (1, 2, 0))
         pred = 1 / (1 + np.exp(-pred))
         pred = np.squeeze(pred)
-        result = tij.util.crop_to_mask(pred, bbox, im_size=image.shape[:2], zero_pad=True, relax=pad) > thres
+        result = ns.util.crop_to_mask(pred, bbox, im_size=image.shape[:2], zero_pad=True, relax=pad) > thres
 
         print("Collecting masks ...")
         results.append(result)
 
         # join results to input image
-        tij.join_mask_to_image(image, results, ij, True)
-        #tij.preds_to_dataset(pred, ij, True) # view predictions
+        ns.mask_to_roi(image, result, ij, True)
+        #ens.join_mask_to_image(image, results, ij, True)
+        #ns.preds_to_dataset(pred, ij, True) # view predictions
         
         # plot the results
         print("Displaying masks ...")
-        plt.imshow(tij.util.overlay_masks(image.data / 255, results))
+        plt.imshow(ns.util.overlay_masks(image.data / 255, results))
         plt.plot(extreme_points_ori[:, 0], extreme_points_ori[:, 1], 'gx')
