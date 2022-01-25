@@ -142,6 +142,34 @@ def mask_to_xarray(mask, ij_instance, show=False):
 
     return mask_xr
 
+
+def mask_to_roi(image, mask, ij_instance, show=False):
+    # get ImageJ resources
+    ImagePlus = sj.jimport('ij.ImagePlus')
+    OvalRoi = sj.jimport('ij.gui.OvalRoi')
+    Overlay = sj.jimport('ij.gui.Overlay')
+    Selection = sj.jimport('ij.plugin.Selection')()
+    RoiManager = sj.jimport('ij.plugin.frame.RoiManager')()
+    ov = Overlay()
+    rm = RoiManager.getRoiManager()
+
+    image_ds = ij_instance.py.to_dataset(image)
+    image_imp = ij_instance.convert().convert(image_ds, ImagePlus)
+    mask_ds = mask_to_dataset(mask, ij_instance)
+    mask_imp = ij_instance.convert().convert(mask_ds, ImagePlus)
+    mask_imp.show()
+    ij_instance.py.run_macro("""run("8-bit");""")
+    Selection.run("from")
+    roi = mask_imp.getRoi()
+    mask_imp.hide()
+    rm.addRoi(roi)
+    ov.add(roi)
+    image_imp.setOverlay(ov)
+    image_imp.show()
+
+    return None
+
+
 def join_mask_to_image(image, mask, ij_instance, show=False):
     """
     Take the result mask or masks from the neural network and return an imagej stack.
