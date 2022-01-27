@@ -20,7 +20,25 @@ class Path(object):
     def models_dir():
         return 'models/'
 
-def create_bounding_box(image, points=None, pad=0, zero_pad=False):
+
+def java_to_numpy(java_image, ij_instance):
+    """
+    Convert ImageJ java images to numpy arrays.
+    """
+    # ImageJ resources
+    Dataset = sj.jimport('net.imagej.Dataset')
+    ImagePlus = sj.jimport('ij.ImagePlus')
+
+    if isinstance(java_image, Dataset):
+        xarr_image = ij_instance.py.from_java(java_image)
+        return xarr_image.data
+    elif isinstance(java_image, ImagePlus):
+        ds_image = ij_instance.convert().convert(java_image, Dataset)
+        xarr_image = ij_instance.py.from_java(ds_image)
+        return xarr_image.data
+        
+
+def create_bounding_box(image, points: np.ndarray, pad: int, zero_pad: bool):
     if points is not None:
         inds = np.flip(points.transpose(), axis=0)
     else:
@@ -47,7 +65,8 @@ def create_bounding_box(image, points=None, pad=0, zero_pad=False):
 
     return x_min, y_min, x_max, y_max
 
-def crop_bounding_box(image, bounding_box, zero_pad=False):
+
+def crop_bounding_box(image: np.ndarray, bounding_box, zero_pad: bool):
     # get image bounds
     bounds = (0, 0, image.shape[1] - 1, image.shape[0] -1)
 
@@ -78,7 +97,8 @@ def crop_bounding_box(image, bounding_box, zero_pad=False):
 
     return crop
 
-def resize_image(image, resolution, flagval=None):
+
+def resize_image(image: np.ndarray, resolution: tuple, flagval=None):
     # resize the incoming numpy array
     if isinstance(image, xr.DataArray):
         image = image.data
@@ -108,6 +128,7 @@ def resize_image(image, resolution, flagval=None):
     
     return image
 
+
 def crop_from_mask(image, mask, relax=0, zero_pad=False):
     if mask.shape[:2] != image.shape[:2]:
         mask = cv2.resize(mask, dsize=tuple(reversed(image.shape[:2])), interpolation=cv2.INTER_NEAREST)
@@ -122,7 +143,8 @@ def crop_from_mask(image, mask, relax=0, zero_pad=False):
     
     return crop
 
-def crop_to_mask(crop_mask, bbox, im=None, im_size=None, zero_pad=False, relax=0, mask_relax=True, interpolation=cv2.INTER_CUBIC, scikit=False):
+
+def crop_to_binary(image, bbox, im=None, im_size=None, zero_pad=False, relax=0, mask_relax=True, interpolation=cv2.INTER_CUBIC, scikit=False):
     if scikit:
         from skimage.transform import resize as sk_resize
     assert(not(im is None and im_size is None)), 'You have to provide an image or the image size'
@@ -156,12 +178,12 @@ def crop_to_mask(crop_mask, bbox, im=None, im_size=None, zero_pad=False, relax=0
     inds = tuple(map(sum, zip(bbox_valid, offsets + offsets)))
 
     if scikit:
-        crop_mask = sk_resize(crop_mask, (bbox[3] - bbox[1] + 1, bbox[2] - bbox[0] + 1), order=0, mode='constant').astype(crop_mask.dtype)
+        image = sk_resize(image, (bbox[3] - bbox[1] + 1, bbox[2] - bbox[0] + 1), order=0, mode='constant').astype(image.dtype)
     else:
-        crop_mask = cv2.resize(crop_mask, (bbox[2] - bbox[0] + 1, bbox[3] - bbox[1] + 1), interpolation=interpolation)
+        image = cv2.resize(image, (bbox[2] - bbox[0] + 1, bbox[3] - bbox[1] + 1), interpolation=interpolation)
     result_ = np.zeros(im_si)
     result_[bbox_valid[1]:bbox_valid[3] + 1, bbox_valid[0]:bbox_valid[2] + 1] = \
-        crop_mask[inds[1]:inds[3] + 1, inds[0]:inds[2] + 1]
+        image[inds[1]:inds[3] + 1, inds[0]:inds[2] + 1]
 
     result = np.zeros(im_si)
     if mask_relax:
@@ -171,6 +193,7 @@ def crop_to_mask(crop_mask, bbox, im=None, im_size=None, zero_pad=False, relax=0
         result = result_
 
     return result
+
 
 def image_to_numpy(image, ij_instance):
     """
@@ -190,6 +213,7 @@ def image_to_numpy(image, ij_instance):
         image = ij_instance.py.to_dataset(image)
         image = ij_instance.py.from_java(image)
         return image.data
+
 
 def overlay_masks(im, masks, alpha=0.5):
     colors = np.load(os.path.join(os.path.dirname(__file__), 'pascal_map.npy'))/255.
@@ -217,6 +241,7 @@ def overlay_masks(im, masks, alpha=0.5):
 
     return ov
 
+
 def create_gaussian(size, sigma=10, center=None, d_type=np.float64):
     x = np.arange(0, size[1], 1, float)
     y = np.arange(0, size[0], 1, float)
@@ -229,6 +254,7 @@ def create_gaussian(size, sigma=10, center=None, d_type=np.float64):
         y0 = center[1]
 
     return np.exp(-4 * np.log(2) * ((x - x0) ** 2 + (y - y0) ** 2) / sigma ** 2).astype(d_type)
+
 
 def create_ground_truth(image, labels, sigma=10, one_mask_per_point=False):
     h, w = image.shape[:2]
@@ -250,6 +276,7 @@ def create_ground_truth(image, labels, sigma=10, one_mask_per_point=False):
     ground_truth = ground_truth.astype(dtype=image.dtype)
 
     return ground_truth
+
 
 def normalize_image(image, max_value):
     

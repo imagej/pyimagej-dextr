@@ -3,6 +3,9 @@ import scyjava as sj
 import xarray as xr
 
 def mask_to_roi(mask, ij_instance):
+    """
+    Convert 32-bit binary images from DEXTR to ImageJ ROIs.
+    """
     # get ImageJ resources
     ThresholdToSelection = sj.jimport('ij.plugin.filter.ThresholdToSelection')()
     ImageConverter = sj.jimport('ij.process.ImageConverter')
@@ -24,7 +27,7 @@ def mask_to_roi(mask, ij_instance):
 
 def mask_to_imp(mask, ij_instance, show=False):
     """
-    Convert a mask to an ImagePlus.
+    Convert a numpy/xarray binary mask to an ImagePlus.
     """
     if mask.dtype == bool:
         mask = mask.astype(int)
@@ -41,7 +44,7 @@ def mask_to_imp(mask, ij_instance, show=False):
 
 def mask_to_dataset(mask, ij_instance, show=False):
     """
-    Return mask as a dataset.
+    Convert a numpy/xarray binary mask to a Dataset.
     :param mask: Boolean numpy array
     """
     if mask.dtype == bool:
@@ -55,6 +58,7 @@ def mask_to_dataset(mask, ij_instance, show=False):
 
 
 def array_to_rectangle_roi(ij_instance, image, rectangle_array: np.ndarray, add_to_roi_manager=False):
+    # TODO: Revisit this method and impove with new info
     """
     Convert an array of rectangles into ImageJ ROIs.
     """
@@ -97,7 +101,11 @@ def array_to_rectangle_roi(ij_instance, image, rectangle_array: np.ndarray, add_
     
     return None
 
+
 def array_to_oval_roi(ij_instance, image, oval_array: np.ndarray, add_to_roi_manager=False):
+    # TODO: Revisit this method and imporve with new info
+    """
+    """
     # get ImageJ resources
     Dataset = sj.jimport('net.imagej.Dataset')
     ImagePlus = sj.jimport('ij.ImagePlus')

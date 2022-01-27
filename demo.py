@@ -10,14 +10,6 @@ from collections import OrderedDict
 from matplotlib import pyplot as plt
 from torch.nn.functional import interpolate
 
-# start imagej
-print("Starting ImageJ ...")
-ij = imagej.init(mode='interactive')
-print(f"ImageJ version: {ij.getVersion()}")
-
-# start UI
-ij.ui().showUI()
-
 def show_ij_img(array):
     ds = ij.py.to_dataset(array)
     ij.ui().show(ds)
@@ -30,12 +22,6 @@ def show_plt_img(array):
 
     return
 
-def load_img(path):
-    img_ds = ij.io().open(path)
-    img_xr = ij.py.from_java(img_ds)
-
-    return img_xr
-    
 # define some network parameters
 model_name = "dextr_pascal-sbd"
 pad = 50
@@ -63,43 +49,44 @@ net.eval()
 net.to(device)
 ####################################################
 
-# open image and collect points
-print("Opening image ...")
-image = load_img('imgs/cell.jpg')
-ds = ij.io().open('imgs/cell.jpg')
+# start imagej
+print("Starting ImageJ ...")
+ij = imagej.init(mode='interactive')
+print(f"ImageJ version: {ij.getVersion()}")
+ij.ui().showUI()
+
+# get ImageJ resources
 ImagePlus = sj.jimport('ij.ImagePlus')
 Overlay = sj.jimport('ij.gui.Overlay')
 RoiManager = sj.jimport('ij.plugin.frame.RoiManager')()
+
+print("Opening image ...")
+ij_image = ij.io().open('sample-data/cell.jpg')
+numpy_image = ns.util.java_to_numpy(ij_image, ij)
 ov = Overlay()
 rm = RoiManager.getRoiManager()
-imp = ij.convert().convert(ds, ImagePlus)
+imp = ij.convert().convert(ij_image, ImagePlus)
 imp.show()
-ns.create_extreme_point_window(image, ij, title="Data")
+ns.create_extreme_point_window(ij_image, ij)
 
 results = []
 
 with torch.no_grad():
     while 1:
         print("Collecting points ...")
-        extreme_points_ori = ns.collect_extreme_points_ori(points=5)
+        extreme_points = ns.collect_extreme_points(points=5)
 
-        # crop image to bounding box from extreme_points_ori
+        # crop image to bounding box from extreme_points
         print("Creating crop ...")
-        bbox = ns.util.create_bounding_box(image, points=extreme_points_ori, pad=pad, zero_pad=True)
-        crop = ns.util.crop_bounding_box(image, bounding_box=bbox, zero_pad=True)
-        resize = ns.util.resize_image(crop, (512, 512)).astype(np.float32)
+        crop = ns.crop_to_extreme_points(image=numpy_image, points=extreme_points, pad=pad, zero_pad=True)
 
         # generate extreme point heat map
         print("Generating heatmap ...")
-        extreme_points = extreme_points_ori - [np.min(extreme_points_ori[:, 0]),  np.min(extreme_points_ori[:1])] + [pad, pad]
-        extreme_points = (512 * extreme_points * [1 / crop.shape[1], 1 / crop.shape[0]]).astype(int)
-        heatmap = ns.util.create_ground_truth(resize, extreme_points, sigma=10)
-        heatmap = ns.util.normalize_image(heatmap, 255)
+        heatmap = ns.create_extreme_point_heatmap(image=crop, resolution=(512, 512), points=extreme_points, pad=pad)
 
         # convert inputs to tensor
         print("Converting inputs ...")
-        dextr_input = np.concatenate((resize, heatmap[:, :, np.newaxis]), axis=2)
-        inputs = torch.from_numpy(dextr_input.transpose((2, 0, 1))[np.newaxis, ...])
+        inputs = ns.convert_to_tensor(crop, heatmap, resolution=(512, 512))
 
         # run a forward pass
         print("Sending inputs to the network ...")
@@ -111,9 +98,9 @@ with torch.no_grad():
         pred = np.transpose(outputs.data.numpy()[0, ...], (1, 2, 0))
         pred = 1 / (1 + np.exp(-pred))
         pred = np.squeeze(pred)
-        result = ns.util.crop_to_mask(pred, bbox, im_size=image.shape[:2], zero_pad=True, relax=pad) > thres
+        result = ns.detection_to_binary(image=numpy_image, prediction=pred, points=extreme_points, zero_pad=True, pad=pad)
 
-        # convert mask to roi
+        # convert masks to roi anJ
         roi = ns.roi.mask_to_roi(result, ij)
         rm.addRoi(roi)
         ov.add(roi)
@@ -121,12 +108,8 @@ with torch.no_grad():
 
         print("Collecting masks ...")
         results.append(result)
-
-        # join results to input image
-        #ens.join_mask_to_image(image, results, ij, True)
-        #ns.preds_to_dataset(pred, ij, True) # view predictions
         
         # plot the results
         print("Displaying masks ...")
-        plt.imshow(ns.util.overlay_masks(image.data / 255, results))
-        plt.plot(extreme_points_ori[:, 0], extreme_points_ori[:, 1], 'gx')
+        plt.imshow(ns.util.overlay_masks(numpy_image / 255, results))
+        plt.plot(extreme_points[:, 0], extreme_points[:, 1], 'gx')
