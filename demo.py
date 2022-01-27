@@ -1,5 +1,6 @@
 import os
 import imagej
+import scyjava as sj
 import numpy as np
 import net_segment as ns
 import net_segment.networks.deeplab2 as resnet
@@ -65,6 +66,14 @@ net.to(device)
 # open image and collect points
 print("Opening image ...")
 image = load_img('imgs/cell.jpg')
+ds = ij.io().open('imgs/cell.jpg')
+ImagePlus = sj.jimport('ij.ImagePlus')
+Overlay = sj.jimport('ij.gui.Overlay')
+RoiManager = sj.jimport('ij.plugin.frame.RoiManager')()
+ov = Overlay()
+rm = RoiManager.getRoiManager()
+imp = ij.convert().convert(ds, ImagePlus)
+imp.show()
 ns.create_extreme_point_window(image, ij, title="Data")
 
 results = []
@@ -104,11 +113,16 @@ with torch.no_grad():
         pred = np.squeeze(pred)
         result = ns.util.crop_to_mask(pred, bbox, im_size=image.shape[:2], zero_pad=True, relax=pad) > thres
 
+        # convert mask to roi
+        roi = ns.roi.mask_to_roi(result, ij)
+        rm.addRoi(roi)
+        ov.add(roi)
+        imp.setOverlay(ov)
+
         print("Collecting masks ...")
         results.append(result)
 
         # join results to input image
-        ns.mask_to_roi(image, result, ij, True)
         #ens.join_mask_to_image(image, results, ij, True)
         #ns.preds_to_dataset(pred, ij, True) # view predictions
         
