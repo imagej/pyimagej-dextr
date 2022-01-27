@@ -1,5 +1,58 @@
 import numpy as np
 import scyjava as sj
+import xarray as xr
+
+def mask_to_roi(mask, ij_instance):
+    # get ImageJ resources
+    ThresholdToSelection = sj.jimport('ij.plugin.filter.ThresholdToSelection')()
+    ImageConverter = sj.jimport('ij.process.ImageConverter')
+
+    # check if mask is array or java
+    if isinstance(mask, xr.DataArray):
+        mask = mask_to_imp(mask, ij_instance)
+    if isinstance(mask, np.ndarray):
+        mask = mask_to_imp(mask, ij_instance)
+    
+    # convert 32-bit mask to 8-bit and set threshold
+    ic = ImageConverter(mask)
+    ic.convertToGray8()
+    mask_ip = mask.getProcessor()
+    mask_ip.setThreshold(255, 255, 2)
+    
+    return ThresholdToSelection.convert(mask_ip)
+
+
+def mask_to_imp(mask, ij_instance, show=False):
+    """
+    Convert a mask to an ImagePlus.
+    """
+    if mask.dtype == bool:
+        mask = mask.astype(int)
+
+    ImagePlus = sj.jimport('ij.ImagePlus')
+    mask = ij_instance.py.to_dataset(mask)
+    imp_mask = ij_instance.convert().convert(mask, ImagePlus)
+
+    if show:
+        imp_mask.show()
+
+    return imp_mask
+
+
+def mask_to_dataset(mask, ij_instance, show=False):
+    """
+    Return mask as a dataset.
+    :param mask: Boolean numpy array
+    """
+    if mask.dtype == bool:
+        mask = mask.astype(int)
+        
+    ds_mask = ij_instance.py.to_dataset(mask)
+    if show:
+        ij_instance.ui().show(ds_mask)
+    
+    return ds_mask
+
 
 def array_to_rectangle_roi(ij_instance, image, rectangle_array: np.ndarray, add_to_roi_manager=False):
     """
