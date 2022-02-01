@@ -23,7 +23,7 @@ class Path(object):
 
 def java_to_numpy(java_image, ij_instance):
     """
-    Convert ImageJ java images to numpy arrays.
+    Convert ImageJ java images to numpy arrays uint8 grayscale images.
     """
     # ImageJ resources
     Dataset = sj.jimport('net.imagej.Dataset')
@@ -31,11 +31,19 @@ def java_to_numpy(java_image, ij_instance):
 
     if isinstance(java_image, Dataset):
         xarr_image = ij_instance.py.from_java(java_image)
-        return xarr_image.data
+        if len(xarr_image.shape) <= 2:
+            rgb_image = xarr_image.data[:, :, None] * np.ones(3, dtype=np.uint8)[None, None, :]
+            return np.array(rgb_image / np.amax(rgb_image) * 255, np.uint8)# scale image to [0,255]
+        else:
+            return xarr_image.data
     elif isinstance(java_image, ImagePlus):
         ds_image = ij_instance.convert().convert(java_image, Dataset)
         xarr_image = ij_instance.py.from_java(ds_image)
-        return xarr_image.data
+        if len(xarr_image.shape) <= 2:
+            rgb_image = xarr_image.data[:, :, None] * np.ones(3, dtype=np.uint8)[None, None, :]
+            return np.array(rgb_image / np.amax(rgb_image) * 255, np.uint8)# scale image to [0,255]
+        else:
+            return xarr_image.data
         
 
 def create_bounding_box(image, points: np.ndarray, pad: int, zero_pad: bool):
