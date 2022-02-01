@@ -76,7 +76,7 @@ def create_extreme_point_window(image, ij_instance, title=None, axis='off'):
     # display image and collect points
     plt.ion()
     plt.axis(axis)
-    plt.imshow(display_image)
+    plt.imshow(display_image, interpolation='nearest')
     plt.title(title)
 
     return
