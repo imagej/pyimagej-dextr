@@ -1,53 +1,24 @@
-import os
 import imagej
 import scyjava as sj
 import numpy as np
 import net_segment as ns
-import net_segment.networks.deeplab2 as resnet
 import torch
-from net_segment.util import Path
-from collections import OrderedDict
+import matplotlib
 from matplotlib import pyplot as plt
 from torch.nn.functional import interpolate
 
-def show_ij_img(array):
-    ds = ij.py.to_dataset(array)
-    ij.ui().show(ds)
-
-    return
-
-def show_plt_img(array):
-    plt.imshow(array)
-    plt.show()
-
-    return
+matplotlib.interactive(True)
 
 # define some network parameters
 model_name = "dextr_pascal-sbd"
-pad = 50
-thres = 0.8
+pad = 35
+thres = 0.3
 gpu_id = 0
 device = torch.device("cuda:" + str(gpu_id) if torch.cuda.is_available() else "cpu")
 
-####################################################
 # create the network and load the weights (demo)
-net = resnet.resnet101(1, nInputChannels=4, classifier='psp') # constructs a ResNet-101 model
-print("Initializing weights from: {}".format(os.path.join(Path.models_dir(), model_name + '.pth')))
-state_dict_chkpnt = torch.load(os.path.join(Path.models_dir(), model_name + '.pth'), map_location=lambda storage, loc: storage)
-
-# remove the `module.` prefix from the model -- if trained using DataParallel
-if 'module.' in list(state_dict_chkpnt.keys())[0]:
-    new_state_dict = OrderedDict()
-    for k, v in state_dict_chkpnt.items():
-        name = k[7:]  # remove `module.` from multi-gpu training
-        new_state_dict[name] = v
-else:
-    new_state_dict = state_dict_chkpnt
-    
-net.load_state_dict(new_state_dict)
-net.eval()
+net = ns.construct_resnet101(model_name)
 net.to(device)
-####################################################
 
 # start imagej
 print("Starting ImageJ ...")
@@ -61,7 +32,7 @@ Overlay = sj.jimport('ij.gui.Overlay')
 RoiManager = sj.jimport('ij.plugin.frame.RoiManager')()
 
 print("Opening image ...")
-ij_image = ij.io().open('sample-data/cell.jpg')
+ij_image = ij.io().open('doc/sample-data/cell.png')
 numpy_image = ns.util.java_to_numpy(ij_image, ij)
 ov = Overlay()
 rm = RoiManager.getRoiManager()
@@ -98,7 +69,7 @@ with torch.no_grad():
         pred = np.transpose(outputs.data.numpy()[0, ...], (1, 2, 0))
         pred = 1 / (1 + np.exp(-pred))
         pred = np.squeeze(pred)
-        result = ns.detection_to_binary(image=numpy_image, prediction=pred, points=extreme_points, zero_pad=True, pad=pad)
+        result = ns.detection_to_binary(image=numpy_image, prediction=pred, points=extreme_points, zero_pad=True, pad=pad, thres=thres)
 
         # convert masks to roi anJ
         roi = ns.roi.mask_to_roi(result, ij)
