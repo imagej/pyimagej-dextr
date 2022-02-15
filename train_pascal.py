@@ -19,7 +19,7 @@ from dataloaders.combine_dbs import CombineDBs as combine_dbs
 import dataloaders.pascal as pascal
 import dataloaders.sbd as sbd
 from dataloaders import custom_transforms as tr
-import networks.deeplab_resnet as resnet
+import net_segment.networks.deeplab2 as resnet
 from layers.loss import class_balanced_cross_entropy_loss
 from dataloaders.helpers import *
 
