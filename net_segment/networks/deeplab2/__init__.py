@@ -5,7 +5,6 @@ import torch
 import numpy as np
 from copy import deepcopy
 from torch.nn import functional as F
-from net_segment.util import Path
 
 affine_par = True
 
@@ -257,7 +256,7 @@ def Res_Deeplab(n_classes=21, pretrained=False):
     model = MS_Deeplab(Bottleneck, n_classes)
     if pretrained:
         pth_model = 'MS_DeepLab_resnet_trained_VOC.pth'
-        saved_state_dict = torch.load(os.path.join(Path.models_dir(), pth_model),
+        saved_state_dict = torch.load(os.path.join('model/', pth_model),
                                       map_location=lambda storage, loc: storage)
         if n_classes != 21:
             for i in saved_state_dict:
