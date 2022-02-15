@@ -32,11 +32,12 @@ Overlay = sj.jimport('ij.gui.Overlay')
 RoiManager = sj.jimport('ij.plugin.frame.RoiManager')()
 
 print("Opening image ...")
-ij_image = ij.io().open('doc/sample-data/cell.png')
+ij_image = ij.io().open('doc/sample-data/cell.jpg')
 numpy_image = ns.util.java_to_numpy(ij_image, ij)
 ov = Overlay()
 rm = RoiManager.getRoiManager()
 imp = ij.convert().convert(ij_image, ImagePlus)
+imp.getProcessor().resetMinAndMax()
 imp.show()
 ns.create_extreme_point_window(ij_image, ij)
 
