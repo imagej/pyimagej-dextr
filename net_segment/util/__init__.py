@@ -4,22 +4,6 @@ import scyjava as sj
 import xarray as xr
 import cv2
 
-class Path(object):
-    @staticmethod
-    def db_root_dir(database):
-        if database == 'pascal':
-            return '/path/to/PASCAL/VOC2012'
-        elif database == 'sbd':
-            return '/path/to/SBD/'
-        else:
-            print('Database {} not available.'.format(database))
-            raise NotImplementedError
-
-
-    @staticmethod
-    def models_dir():
-        return 'models/'
-
 
 def java_to_numpy(java_image, ij_instance):
     """
