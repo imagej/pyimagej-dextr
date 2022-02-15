@@ -1,10 +1,37 @@
+import os
 import numpy as np
 import scyjava as sj
 import net_segment.util as util
 import net_segment.roi as roi
+import net_segment.networks as networks
 import xarray as xr
 import torch
 from matplotlib import pyplot as plt
+from collections import OrderedDict
+
+def construct_resnet101(model_name: str, evaluation_mode=True):
+    """
+    Construct a ResNet network.
+    """
+    net = networks.deeplab2.resnet101(n_classes=1, nInputChannels=4, classifier='psp')
+    state_dict_chkpnt = torch.load(os.path.join('models/', model_name + '.pth'), map_location=lambda storage, loc: storage)
+
+    # remove the `module.` prefix from the model -- if trained using DataParallel
+    if 'module.' in list(state_dict_chkpnt.keys())[0]:
+        new_state_dict = OrderedDict()
+        for k, v in state_dict_chkpnt.items():
+            name = k[7:]  # remove `module.` from multi-gpu training
+            new_state_dict[name] = v
+    else:
+        new_state_dict = state_dict_chkpnt
+
+    net.load_state_dict(new_state_dict)
+
+    if evaluation_mode:
+        net.eval()
+
+    return net
+
 
 def results_to_dataset(results, ij_instance, show=False):
     """
