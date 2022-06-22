@@ -27,19 +27,17 @@ print(f"ImageJ version: {ij.getVersion()}")
 ij.ui().showUI()
 
 # get ImageJ resources
-ImagePlus = sj.jimport('ij.ImagePlus')
 Overlay = sj.jimport('ij.gui.Overlay')
-RoiManager = sj.jimport('ij.plugin.frame.RoiManager')()
 
 print("Opening image ...")
-ij_image = ij.io().open('doc/sample-data/cell.jpg')
-numpy_image = ns.util.java_to_numpy(ij_image, ij)
+dataset = ij.io().open('doc/sample-data/cell.jpg')
+numpy_image = ns.util.java_to_numpy(dataset, ij)
 ov = Overlay()
-rm = RoiManager.getRoiManager()
-imp = ij.convert().convert(ij_image, ImagePlus)
+rm = ij.RoiManager.getRoiManager()
+imp = ij.py.to_imageplus(dataset)
 imp.getProcessor().resetMinAndMax()
 imp.show()
-ns.create_extreme_point_window(ij_image, ij)
+ns.create_extreme_point_window(dataset, ij)
 
 results = []
 

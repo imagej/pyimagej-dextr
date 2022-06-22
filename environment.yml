@@ -1,0 +1,14 @@
+name: pyijdextr
+channels:
+  - conda-forge
+  - pytorch
+  - defaults
+dependencies:
+  # project dependencies
+  - python >= 3.6
+  - pyimagej
+  - openjdk=8
+  - opencv
+  - pytorch
+  - torchvision
+  - cpuonly
